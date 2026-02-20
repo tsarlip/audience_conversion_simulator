@@ -1,0 +1,1109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>TBN Audience Conversion Simulator</title>
+<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Source+Sans+3:wght@300;400;600&display=swap" rel="stylesheet"/>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --gold: #C9A84C; --gold-light: #E8C97A; --navy: #0B1A2E;
+  --navy-mid: #122240; --navy-light: #1A3358; --cream: #F5EDD8;
+  --text: #F0E6CC; --text-dim: #A89B7A;
+}
+body { font-family:'Source Sans 3',sans-serif; background:var(--navy); color:var(--text); min-height:100vh; overflow-x:hidden; }
+body::before { content:''; position:fixed; inset:0; background:radial-gradient(ellipse at 20% 20%,rgba(201,168,76,.08),transparent 60%),radial-gradient(ellipse at 80% 80%,rgba(139,26,26,.06),transparent 50%); pointer-events:none; z-index:0; }
+h1,h2,h3 { font-family:'Playfair Display',serif; }
+.app { position:relative; z-index:1; max-width:1440px; margin:0 auto; padding:16px; }
+.header { text-align:center; padding:32px 20px 24px; border-bottom:1px solid rgba(201,168,76,.3); margin-bottom:24px; }
+.header-logo { font-family:'Playfair Display',serif; font-size:12px; letter-spacing:6px; color:var(--gold); text-transform:uppercase; margin-bottom:6px; }
+.header h1 { font-size:clamp(24px,4vw,44px); color:var(--cream); font-weight:900; line-height:1.1; }
+.header h1 span { color:var(--gold); }
+.header p { color:var(--text-dim); margin-top:8px; font-size:14px; }
+.btn { font-family:'Source Sans 3',sans-serif; font-weight:600; font-size:13px; letter-spacing:.8px; text-transform:uppercase; padding:10px 22px; border:none; cursor:pointer; transition:all .2s; border-radius:3px; }
+.btn-gold { background:var(--gold); color:var(--navy); }
+.btn-gold:hover { background:var(--gold-light); transform:translateY(-1px); }
+.btn-outline { background:transparent; color:var(--gold); border:1px solid var(--gold); }
+.btn-outline:hover { background:rgba(201,168,76,.1); }
+.btn:disabled { opacity:.4; cursor:not-allowed; transform:none; }
+input, textarea, select { background:var(--navy); border:1px solid rgba(201,168,76,.25); border-radius:3px; color:var(--text); font-family:'Source Sans 3',sans-serif; font-size:14px; padding:8px 12px; width:100%; transition:border-color .2s; }
+input:focus, textarea:focus, select:focus { outline:none; border-color:var(--gold); }
+textarea { resize:vertical; }
+.gate { max-width:460px; margin:60px auto; text-align:center; }
+.step-indicator { display:flex; align-items:center; justify-content:center; gap:6px; margin-bottom:24px; flex-wrap:wrap; }
+.step { display:flex; align-items:center; gap:5px; }
+.step-circle { width:26px; height:26px; border-radius:50%; border:2px solid rgba(201,168,76,.3); color:var(--text-dim); font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; }
+.step.active .step-circle { border-color:var(--gold); background:var(--gold); color:var(--navy); }
+.step.done .step-circle { border-color:var(--gold); color:var(--gold); }
+.step-label { font-size:11px; color:var(--text-dim); }
+.step.active .step-label { color:var(--gold); }
+.step-line { width:24px; height:1px; background:rgba(201,168,76,.2); }
+.setup-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:14px; margin-bottom:24px; }
+.pp { background:var(--navy-mid); border:1px solid rgba(201,168,76,.2); border-radius:6px; padding:16px; }
+.pp-hd { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+.p-av { width:38px; height:38px; border-radius:50%; background:var(--navy); border:2px solid var(--gold); display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+.p-nm { font-family:'Playfair Display',serif; font-size:15px; color:var(--cream); }
+.p-sh { font-size:11px; background:rgba(201,168,76,.15); color:var(--gold); padding:2px 8px; border-radius:20px; font-weight:600; margin-top:2px; display:inline-block; }
+.p-ds { font-size:12px; color:var(--text-dim); line-height:1.6; margin-bottom:8px; }
+.p-tg { display:flex; flex-wrap:wrap; gap:4px; margin-bottom:6px; }
+.p-t { font-size:10px; padding:2px 7px; border-radius:20px; background:rgba(201,168,76,.08); color:var(--gold); border:1px solid rgba(201,168,76,.2); }
+.p-lbl { font-size:10px; text-transform:uppercase; letter-spacing:.8px; color:var(--text-dim); margin-bottom:4px; }
+.game-layout { display:grid; grid-template-columns:290px 1fr; gap:14px; align-items:start; }
+@media(max-width:900px){ .game-layout { grid-template-columns:1fr; } }
+.sc { background:var(--navy-mid); border:1px solid rgba(201,168,76,.18); border-radius:6px; overflow:hidden; margin-bottom:9px; transition:all .3s; cursor:pointer; }
+.sc.active { border-color:var(--gold); box-shadow:0 0 16px rgba(201,168,76,.16); }
+.sc-hd { padding:9px 13px; display:flex; align-items:center; gap:8px; background:var(--navy-light); }
+.sc-nm { font-weight:600; font-size:12px; flex:1; }
+.sc-sh { font-size:11px; background:rgba(201,168,76,.15); color:var(--gold); padding:2px 6px; border-radius:20px; font-weight:600; }
+.sc-bd { padding:9px 13px 11px; }
+.cb-wrap { margin-top:5px; }
+.cb-lbl { display:flex; justify-content:space-between; font-size:11px; color:var(--text-dim); margin-bottom:3px; }
+.cb-track { height:5px; background:var(--navy); border-radius:3px; overflow:hidden; }
+.cb-fill { height:100%; border-radius:3px; transition:width .8s cubic-bezier(.4,0,.2,1); }
+.db { font-size:10px; font-weight:700; padding:1px 6px; border-radius:20px; margin-left:4px; }
+.dp { background:rgba(76,175,80,.2); color:#81C784; }
+.dn { background:rgba(244,67,54,.2); color:#EF9A9A; }
+.chat-wrap { display:flex; flex-direction:column; }
+.ch-hd { background:var(--navy-light); border:1px solid rgba(201,168,76,.2); border-radius:6px 6px 0 0; padding:13px 17px; display:flex; align-items:center; gap:11px; }
+.ch-inf { flex:1; }
+.ch-nm { font-family:'Playfair Display',serif; font-size:19px; color:var(--cream); }
+.ch-ds { font-size:12px; color:var(--text-dim); margin-top:2px; }
+.it-wr { text-align:right; }
+.it-dots { display:flex; gap:5px; justify-content:flex-end; margin-top:3px; }
+.it-dot { width:9px; height:9px; border-radius:50%; border:2px solid rgba(201,168,76,.35); transition:all .3s; }
+.it-dot.used { background:var(--gold); border-color:var(--gold); }
+.it-dot.cur { border-color:var(--gold); background:rgba(201,168,76,.25); }
+.chat-msgs { background:var(--navy); border-left:1px solid rgba(201,168,76,.2); border-right:1px solid rgba(201,168,76,.2); min-height:320px; max-height:360px; overflow-y:auto; padding:15px; display:flex; flex-direction:column; gap:13px; }
+.chat-msgs::-webkit-scrollbar { width:3px; }
+.chat-msgs::-webkit-scrollbar-thumb { background:var(--gold); border-radius:2px; }
+.msg { max-width:82%; }
+.mu { align-self:flex-end; }
+.mp { align-self:flex-start; }
+.m-lbl { font-size:10px; color:var(--text-dim); margin-bottom:3px; }
+.m-bub { padding:10px 13px; border-radius:6px; font-size:13px; line-height:1.65; }
+.mu .m-bub { background:rgba(201,168,76,.13); border:1px solid rgba(201,168,76,.28); border-radius:6px 6px 0 6px; }
+.mp .m-bub { background:var(--navy-light); border:1px solid rgba(255,255,255,.07); border-radius:6px 6px 6px 0; }
+.m-meta { display:flex; align-items:center; gap:5px; margin-top:4px; flex-wrap:wrap; }
+.m-em { font-size:10px; padding:2px 7px; border-radius:20px; background:rgba(201,168,76,.1); color:var(--gold); }
+.typing { display:flex; gap:4px; align-items:center; }
+.td { width:5px; height:5px; border-radius:50%; background:var(--gold); animation:tb 1.2s infinite; }
+.td:nth-child(2){animation-delay:.2s;} .td:nth-child(3){animation-delay:.4s;}
+@keyframes tb{0%,60%,100%{transform:translateY(0);opacity:.4;}30%{transform:translateY(-5px);opacity:1;}}
+.empty-chat { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; color:var(--text-dim); text-align:center; padding:28px; gap:7px; }
+.chat-inp { background:var(--navy-light); border:1px solid rgba(201,168,76,.2); border-top:none; border-radius:0 0 6px 6px; padding:13px 17px; }
+.ct-lbl { font-size:10px; color:var(--text-dim); letter-spacing:.8px; text-transform:uppercase; margin-bottom:6px; }
+.ct-row { display:flex; gap:5px; flex-wrap:wrap; margin-bottom:11px; }
+.ct-btn { font-size:11px; padding:4px 11px; border-radius:20px; border:1px solid rgba(201,168,76,.28); background:transparent; color:var(--text-dim); cursor:pointer; transition:all .2s; font-family:'Source Sans 3',sans-serif; }
+.ct-btn.sel { background:var(--gold); color:var(--navy); border-color:var(--gold); font-weight:600; }
+.ct-btn:hover:not(.sel) { border-color:var(--gold); color:var(--gold); }
+.inp-row { display:flex; gap:7px; align-items:flex-end; }
+.inp-row textarea { flex:1; min-height:56px; max-height:110px; }
+/* COACH */
+.coach { background:var(--navy-mid); border:1px solid rgba(201,168,76,.28); border-radius:6px; padding:14px; margin-top:11px; }
+.coach-hd { display:flex; align-items:center; gap:7px; margin-bottom:10px; cursor:pointer; user-select:none; }
+.coach-title { font-family:'Playfair Display',serif; font-size:14px; color:var(--gold); flex:1; }
+.coach-tog { font-size:11px; color:var(--text-dim); background:rgba(201,168,76,.08); padding:2px 7px; border-radius:20px; }
+.coach-aff { font-size:11px; font-weight:600; margin-right:6px; }
+.coach-body { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+@media(max-width:700px){ .coach-body { grid-template-columns:1fr; } }
+.coach-tip { background:var(--navy); border:1px solid rgba(201,168,76,.1); border-radius:5px; padding:10px 12px; }
+.ct-tip-lbl { font-size:10px; letter-spacing:.8px; text-transform:uppercase; color:var(--gold); margin-bottom:4px; font-weight:600; }
+.ct-tip-txt { font-size:12px; color:var(--text-dim); line-height:1.6; }
+.ct-example { background:rgba(201,168,76,.05); border-left:2px solid var(--gold); padding:6px 9px; margin-top:6px; border-radius:0 3px 3px 0; font-size:12px; color:var(--cream); font-style:italic; line-height:1.5; }
+.cp-btn { font-size:10px; padding:3px 8px; border-radius:20px; border:1px solid rgba(201,168,76,.3); background:transparent; color:var(--gold); cursor:pointer; font-family:'Source Sans 3',sans-serif; transition:all .2s; margin-top:5px; }
+.cp-btn:hover { background:rgba(201,168,76,.12); }
+.coach-pain { margin-top:8px; font-size:11px; color:var(--text-dim); line-height:1.6; padding:0 1px; }
+/* IMPACT */
+.imp-panel { background:var(--navy-mid); border:1px solid rgba(201,168,76,.16); border-radius:6px; padding:14px; margin-top:11px; }
+.imp-title { font-family:'Playfair Display',serif; font-size:14px; color:var(--gold); margin-bottom:10px; }
+.imp-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(145px,1fr)); gap:7px; }
+.i-chip { background:var(--navy); border:1px solid rgba(201,168,76,.1); border-radius:5px; padding:8px 10px; }
+.i-nm { font-size:11px; color:var(--text-dim); margin-bottom:2px; }
+.i-val { font-weight:700; font-size:14px; }
+.i-pos{color:#81C784;} .i-neg{color:#EF9A9A;} .i-neu{color:var(--gold);}
+.i-rs { font-size:10px; color:var(--text-dim); margin-top:2px; line-height:1.4; }
+/* RESULTS */
+.res-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:18px; }
+@media(max-width:700px){ .res-grid { grid-template-columns:1fr; } }
+.card { background:var(--navy-mid); border:1px solid rgba(201,168,76,.2); border-radius:6px; padding:18px; }
+.card-title { font-family:'Playfair Display',serif; font-size:15px; color:var(--gold); margin-bottom:12px; }
+.sb-row { display:flex; align-items:center; gap:7px; margin-bottom:6px; }
+.sb-nm { width:110px; font-size:11px; color:var(--text-dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sb-trk { flex:1; height:19px; background:var(--navy); border-radius:3px; overflow:hidden; }
+.sb-fill { height:100%; border-radius:3px; display:flex; align-items:center; padding-left:6px; font-size:10px; font-weight:700; color:var(--navy); transition:width 1s ease; }
+.sb-dl { width:48px; text-align:right; font-size:11px; font-weight:700; }
+.grade-box { text-align:center; padding:22px; background:var(--navy); border-radius:6px; border:1px solid rgba(201,168,76,.3); }
+.g-letter { font-family:'Playfair Display',serif; font-size:68px; font-weight:900; line-height:1; background:linear-gradient(135deg,var(--gold),var(--gold-light)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.g-lbl { font-size:13px; color:var(--text-dim); margin-top:5px; }
+.g-score { font-size:24px; font-weight:700; color:var(--cream); margin-top:3px; }
+.action-row { display:flex; gap:9px; justify-content:center; flex-wrap:wrap; margin-top:18px; }
+.phase-title { font-family:'Playfair Display',serif; font-size:21px; color:var(--gold); margin-bottom:14px; text-align:center; }
+.toast { position:fixed; bottom:18px; right:18px; background:var(--navy-light); border:1px solid var(--gold); border-radius:5px; padding:9px 15px; font-size:13px; z-index:999; animation:sli .3s ease; }
+@keyframes sli{from{transform:translateY(14px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+.disclaimer { font-size:11px; color:var(--text-dim); text-align:center; margin-top:10px; }
+
+/* MODAL OVERLAY */
+.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.72); z-index:1000; display:flex; align-items:center; justify-content:center; padding:16px; animation:fadeIn .25s ease; }
+@keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+.modal { background:var(--navy-mid); border:1px solid rgba(201,168,76,.35); border-radius:8px; max-width:680px; width:100%; max-height:88vh; overflow-y:auto; padding:32px; position:relative; animation:slideUp .3s ease; }
+@keyframes slideUp{from{transform:translateY(20px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+.modal::-webkit-scrollbar{width:3px;} .modal::-webkit-scrollbar-thumb{background:var(--gold);border-radius:2px;}
+.modal-close { position:absolute; top:14px; right:16px; background:transparent; border:1px solid rgba(201,168,76,.3); color:var(--text-dim); font-size:16px; width:28px; height:28px; border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .2s; font-family:'Source Sans 3',sans-serif; }
+.modal-close:hover { border-color:var(--gold); color:var(--gold); }
+.modal-logo { font-family:'Playfair Display',serif; font-size:11px; letter-spacing:5px; color:var(--gold); text-transform:uppercase; margin-bottom:8px; }
+.modal h2 { font-family:'Playfair Display',serif; font-size:26px; color:var(--cream); margin-bottom:6px; }
+.modal-sub { font-size:13px; color:var(--text-dim); margin-bottom:22px; line-height:1.5; }
+.modal-divider { height:1px; background:rgba(201,168,76,.2); margin:20px 0; }
+.modal-section { margin-bottom:18px; }
+.modal-section h3 { font-family:'Playfair Display',serif; font-size:15px; color:var(--gold); margin-bottom:8px; display:flex; align-items:center; gap:7px; }
+.modal-section p { font-size:13px; color:var(--text-dim); line-height:1.7; margin-bottom:6px; }
+.modal-steps { display:flex; flex-direction:column; gap:10px; margin-top:4px; }
+.modal-step { display:flex; gap:12px; align-items:flex-start; }
+.modal-step-num { width:24px; height:24px; border-radius:50%; background:var(--gold); color:var(--navy); font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px; }
+.modal-step-body { flex:1; }
+.modal-step-title { font-size:13px; font-weight:600; color:var(--cream); margin-bottom:2px; }
+.modal-step-desc { font-size:12px; color:var(--text-dim); line-height:1.6; }
+.modal-tip-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:8px; }
+@media(max-width:540px){ .modal-tip-grid { grid-template-columns:1fr; } }
+.modal-tip { background:var(--navy); border:1px solid rgba(201,168,76,.12); border-radius:5px; padding:11px 13px; }
+.modal-tip-icon { font-size:18px; margin-bottom:5px; }
+.modal-tip-title { font-size:12px; font-weight:600; color:var(--cream); margin-bottom:3px; }
+.modal-tip-text { font-size:11px; color:var(--text-dim); line-height:1.6; }
+.modal-tag { display:inline-block; font-size:10px; padding:2px 8px; border-radius:20px; background:rgba(201,168,76,.12); color:var(--gold); border:1px solid rgba(201,168,76,.25); margin:2px 2px 0 0; }
+.modal-highlight { background:rgba(201,168,76,.07); border-left:3px solid var(--gold); border-radius:0 4px 4px 0; padding:10px 13px; margin:8px 0; font-size:12px; color:var(--cream); line-height:1.6; }
+.modal-score-row { display:flex; gap:8px; flex-wrap:wrap; margin-top:6px; }
+.modal-score-chip { font-size:11px; padding:4px 10px; border-radius:20px; font-weight:600; }
+
+/* HELP BUTTON */
+.help-btn { position:fixed; bottom:20px; left:20px; width:42px; height:42px; border-radius:50%; background:var(--navy-light); border:1px solid rgba(201,168,76,.4); color:var(--gold); font-size:18px; cursor:pointer; z-index:900; display:flex; align-items:center; justify-content:center; transition:all .2s; font-family:'Source Sans 3',sans-serif; box-shadow:0 2px 12px rgba(0,0,0,.4); }
+.help-btn:hover { background:var(--navy-mid); border-color:var(--gold); transform:scale(1.05); }
+
+/* HELP DRAWER */
+.help-drawer { position:fixed; right:0; top:0; bottom:0; width:min(480px,95vw); background:var(--navy-mid); border-left:1px solid rgba(201,168,76,.3); z-index:1000; overflow-y:auto; padding:24px; transform:translateX(100%); transition:transform .3s cubic-bezier(.4,0,.2,1); }
+.help-drawer.open { transform:translateX(0); }
+.help-drawer::-webkit-scrollbar{width:3px;} .help-drawer::-webkit-scrollbar-thumb{background:var(--gold);border-radius:2px;}
+.help-drawer-close { position:sticky; top:0; display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; background:var(--navy-mid); padding-bottom:12px; border-bottom:1px solid rgba(201,168,76,.2); z-index:1; }
+.help-drawer-title { font-family:'Playfair Display',serif; font-size:18px; color:var(--gold); }
+.hd-close-btn { background:transparent; border:1px solid rgba(201,168,76,.3); color:var(--text-dim); font-size:14px; padding:4px 10px; border-radius:3px; cursor:pointer; font-family:'Source Sans 3',sans-serif; transition:all .2s; }
+.hd-close-btn:hover { border-color:var(--gold); color:var(--gold); }
+.help-section { margin-bottom:22px; }
+.help-section h3 { font-family:'Playfair Display',serif; font-size:14px; color:var(--gold); margin-bottom:8px; padding-bottom:4px; border-bottom:1px solid rgba(201,168,76,.15); }
+.help-section p { font-size:12px; color:var(--text-dim); line-height:1.7; margin-bottom:5px; }
+.help-section ul { padding-left:16px; margin-top:4px; }
+.help-section ul li { font-size:12px; color:var(--text-dim); line-height:1.7; margin-bottom:3px; }
+.help-section ul li strong { color:var(--cream); }
+.help-badge { display:inline-block; font-size:10px; padding:1px 7px; border-radius:20px; font-weight:600; margin:0 2px; }
+.hb-green { background:rgba(76,175,80,.2); color:#81C784; }
+.hb-red { background:rgba(244,67,54,.2); color:#EF9A9A; }
+.hb-gold { background:rgba(201,168,76,.15); color:var(--gold); }
+.help-metric-row { display:flex; gap:8px; margin:8px 0; }
+.help-metric { flex:1; background:var(--navy); border:1px solid rgba(201,168,76,.12); border-radius:5px; padding:8px 10px; text-align:center; }
+.help-metric-val { font-size:18px; font-weight:700; color:var(--gold); }
+.help-metric-lbl { font-size:10px; color:var(--text-dim); margin-top:2px; }
+.help-overlay { position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:999; }
+
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+const TBN_PERSONAS = [
+  { id:0, emoji:"👩‍🦳", name:"Faith-Rooted Traditionalist", marketShare:30, age:"55–75",
+    description:"Skews female, suburban/rural, weekly church attendance. Faith is central — seeks stability, biblical truth, and preservation of Christian values. Primarily watches linear TV, Facebook, and email newsletters. Trusts legacy pastors and established TBN voices.",
+    motivations:["Spiritual growth","Legacy","Doctrinal clarity","Reassurance"],
+    contentPrefs:["Bible teaching","Legacy pastors","Worship specials","Testimonies","Prophecy/Israel"],
+    painPoints:["Cultural drift","Distrust of secular media","Skepticism of modernized theology"],
+    color:"#C9A84C" },
+  { id:1, emoji:"👩‍👧", name:"Hope-Seeking Middle America Mom", marketShare:18, age:"30–50",
+    description:"Married with children, middle-income. Family-focused and leading her home spiritually. Uses smart TV, mobile, YouTube, Instagram, and podcasts. Motivated by parenting support, marriage strength, and daily encouragement.",
+    motivations:["Parenting support","Marriage strength","Encouragement","Practical faith"],
+    contentPrefs:["Parenting shows","Marriage programming","Family films","Worship nights"],
+    painPoints:["Overwhelmed","Limited time","Cultural influence on children"],
+    color:"#9A6AC9" },
+  { id:2, emoji:"🙌", name:"Spirit-Empowered Believer", marketShare:15, age:"25–55",
+    description:"Charismatic/Pentecostal background. Values experiential faith, miracles, and spiritual gifts. Heavy YouTube and livestream user. Seeks breakthrough and revival. Avoids watered-down theology and values authenticity above all.",
+    motivations:["Breakthrough","Revival","Spiritual empowerment","Miracles"],
+    contentPrefs:["Healing services","Prophetic ministry","Revival events","Worship nights"],
+    painPoints:["Watered-down theology","Lack of authenticity","Formal/institutional religion"],
+    color:"#C96A4C" },
+  { id:3, emoji:"🧑‍💻", name:"Next-Gen Christian Explorer", marketShare:12, age:"18–34",
+    description:"Spiritually curious with inconsistent church attendance. Values authenticity and exploring identity. TikTok, Reels, YouTube Shorts native. Navigating doubt and distrust of institutions. Drawn to honest, unscripted faith conversations.",
+    motivations:["Mental health alignment","Belonging","Honest faith dialogue","Purpose"],
+    contentPrefs:["Podcasts","Cultural faith discussions","Testimonies","Relatable hosts"],
+    painPoints:["Institutional distrust","Navigating doubt","Overly polished or preachy content"],
+    color:"#4C9AC9" },
+  { id:4, emoji:"🌍", name:"Global Faith Connector", marketShare:15, age:"25–60",
+    description:"International audience, mobile-first. Connects with global Christian voices. Motivated by hope, empowerment, and access to global teaching. Consumes translated sermons, regional pastors, and worship. High social sharing behavior.",
+    motivations:["Hope","Empowerment","Global faith access","Community connection"],
+    contentPrefs:["Translated sermons","Regional pastors","Worship","International conferences"],
+    painPoints:["Limited local faith media","Economic instability","Language barriers"],
+    color:"#4CC98A" },
+  { id:5, emoji:"🛋️", name:"Cultural Christian Viewer", marketShare:10, age:"35–65",
+    description:"Occasional church attendance, Christian by heritage but less deeply engaged. Faith is secondary to daily life. Smart TV and cable viewer, lower digital engagement. Drawn to inspirational storytelling, holiday programming, and Christian films.",
+    motivations:["Inspirational storytelling","Holiday connection","Light faith touchpoints"],
+    contentPrefs:["Christian films","Specials","Biographies","Testimonies"],
+    painPoints:["Faith is secondary","Distracted by secular media","Heavy doctrine feels alienating"],
+    color:"#A0956A" }
+];
+
+const TBN_CONTENT = [
+  { id:"biblical",  label:"Biblical Teaching",           icon:"📖" },
+  { id:"worship",   label:"Worship & Encounter",         icon:"🎵" },
+  { id:"family",    label:"Family & Relationships",      icon:"🏡" },
+  { id:"testimony", label:"Inspirational Testimony",     icon:"✨" },
+  { id:"films",     label:"Christian Films",             icon:"🎬" },
+  { id:"culture",   label:"Culture & Faith Talks",       icon:"💬" },
+  { id:"prophecy",  label:"Prophecy & World Events",     icon:"🌐" },
+  { id:"global",    label:"Global & Multilingual",       icon:"🌍" },
+  { id:"kids",      label:"Kids & Next-Gen Faith",       icon:"🌟" }
+];
+
+// Affinity scores from TBN document (scaled 0-100)
+const AFFINITY = {
+  0:{ biblical:90, worship:80, family:80, testimony:90, films:80, culture:70, prophecy:85, global:70, kids:70 },
+  1:{ biblical:70, worship:80, family:90, testimony:80, films:90, culture:80, prophecy:55, global:70, kids:90 },
+  2:{ biblical:80, worship:92, family:70, testimony:80, films:70, culture:65, prophecy:75, global:85, kids:65 },
+  3:{ biblical:60, worship:75, family:65, testimony:85, films:80, culture:92, prophecy:60, global:70, kids:70 },
+  4:{ biblical:70, worship:90, family:75, testimony:80, films:75, culture:70, prophecy:65, global:95, kids:75 },
+  5:{ biblical:60, worship:70, family:70, testimony:85, films:85, culture:65, prophecy:55, global:65, kids:70 }
+};
+
+const COACHING = {
+  0:{
+    biblical:{ tip:"Lead with scripture references and name a legacy pastor (Joyce Meyer, David Jeremiah, Turning Point). Emphasize doctrinal depth and the permanence of Biblical truth against cultural drift.", example:"David Jeremiah's new verse-by-verse series through Romans gives you the doctrinal foundation to stand firm when culture tries to rewrite Biblical truth — anchored in scripture, not trends." },
+    worship:{ tip:"Reference traditional hymns alongside contemporary worship. Emphasize reverence and the sacred nature of worship — not entertainment.", example:"TBN's worship specials honor the hymns you grew up with while welcoming voices from today's church — both bow before the same Lord, and that continuity matters." },
+    family:{ tip:"Frame through legacy-building and passing faith to grandchildren. Multi-generational framing resonates most deeply with this persona.", example:"What would it mean for your grandchildren to inherit a faith they'd actually hold onto? This new family discipleship series helps you build that legacy intentionally, generation by generation." },
+    testimony:{ tip:"Choose testimonies of faithful perseverance over decades, not overnight miracles. Long obedience and faithfulness rewarded resonates deeply.", example:"This 72-year-old widow's story isn't about a dramatic miracle — it's 40 years of quiet faithfulness and what God did through it. This is the testimony the church needs to hear right now." },
+    films:{ tip:"Emphasize moral clarity, Biblical values upheld, and family-safe content. Avoid any edgy or doubt-forward framing.", example:"In a media landscape that constantly challenges Christian values, TBN's films offer stories where faith wins — content you can watch with your entire family without compromise." },
+    culture:{ tip:"Frame as apologetics — equipping viewers to respond to cultural challenges with Biblical answers. This is about clarity, not conversation.", example:"When culture asks questions that seem to undermine scripture, this program gives you the Biblical answers grounded in 2,000 years of Christian teaching — so you can respond with confidence." },
+    prophecy:{ tip:"HIGH AFFINITY — be specific about Israel, end-times, and Biblical worldview. Use terms like 'prophetic,' 'signs of the times,' 'God's covenant with Israel.' This persona has been waiting for this content.", example:"Bill Salus walks through the latest events in Israel and shows exactly where we are on the prophetic timeline — this is the serious, scripture-grounded programming you've been asking for." },
+    global:{ tip:"Connect global ministry to the Great Commission mandate. Frame as fulfilling a Biblical calling, not a missions fundraise.", example:"TBN's global reach means the Gospel is going to nations that have never heard it — and your faithful viewership is part of that commission being fulfilled in your lifetime." },
+    kids:{ tip:"Frame as protecting grandchildren from secular media and instilling Biblical values early. Grandparent-to-grandchild legacy framing is most effective.", example:"While secular streaming fills your grandchildren's screens with values that contradict your faith, TBN Kids gives them a counter-narrative anchored in scripture — before the world writes their worldview for them." }
+  },
+  1:{
+    biblical:{ tip:"Make scripture practical and family-applicable — not academic. The question she's asking is: 'How does this help me today with my kids or my marriage?'", example:"Joyce Meyer's new series takes Biblical wisdom and shows you exactly how to apply it when you're running on empty at 9pm and your kids are still pushing every boundary." },
+    worship:{ tip:"Position worship as a weekly reset for a busy mom — a moment to breathe and reconnect in the middle of chaos. Not a performance, but a lifeline.", example:"You don't have to wait until Sunday to feel that stillness. TBN's worship programming gives you a 20-minute exhale in the middle of a week that never slows down." },
+    family:{ tip:"HIGH AFFINITY — be specific about marriage and parenting struggles. Reference real, relatable challenges: exhaustion, disconnection, kids pushing back. Practical tools over inspiration.", example:"Better Together addresses the conversations couples stop having when life gets busy — faith alignment, parenting disagreements, feeling like roommates. Real tools from couples who've been there." },
+    testimony:{ tip:"Testimonies of ordinary moms who overcame. Relatability is everything — imperfect people, messy situations, faith that showed up in the middle of an ordinary Tuesday.", example:"She was a mom of three, holding her marriage together by a thread, losing her faith in the process — until a Tuesday morning TBN program said exactly what she needed to hear. This is her story." },
+    films:{ tip:"Lead with family movie night value. Something she can watch WITH her kids that reflects her values without tension. The Chosen is a strong reference for this persona.", example:"The Chosen is the kind of content you can sit down with your whole family and watch without wondering what comes on screen next — and it sparks real faith conversations around the dinner table." },
+    culture:{ tip:"Speak to the overwhelm of raising kids in today's culture. She wants practical tools and community — not a debate stage.", example:"Your kids are seeing things online that you didn't encounter until adulthood. This program helps you have the faith conversations with them before the culture does — and gives you the words to do it." },
+    prophecy:{ tip:"Softer entry — connect prophecy to hope and God's steady plan for her family's future, not fear or geopolitics.", example:"Understanding what the Bible says about the future isn't about fear — it's about raising your children with the unshakeable confidence that God's plan doesn't change regardless of what's on the news." },
+    global:{ tip:"Connect to teaching her children compassion and global awareness as a faith value. Model generosity for the next generation.", example:"Your kids can grow up knowing the world is bigger than their neighborhood. TBN's global content shows them what faith looks like for believers in Nigeria, South Korea, and Brazil — and why that matters." },
+    kids:{ tip:"Direct and practical. She wants to know: what is it, when is it on, and will my kids actually watch it? Give a concrete description.", example:"TBN Kids has 30 minutes of animated Biblical content your 6-year-old will actually ask to watch again on their own — and they'll absorb scripture without even realizing it's happening." }
+  },
+  2:{
+    biblical:{ tip:"Emphasize Spirit-led interpretation, not just academic exposition. Reference charismatic voices they already trust. This persona wants the Word applied with faith, not just studied.", example:"Andrew Wommack doesn't just teach what the Bible says — he teaches how to apply it by faith in real time. Word of Faith grounded in scripture, with results you can actually see." },
+    worship:{ tip:"HIGH AFFINITY — lead with intensity, encounter, and the tangible presence of God. Reference revival, healing rooms, and spontaneous moments where the Spirit moves unexpectedly.", example:"Gather25 isn't a concert — it's a corporate encounter where the Spirit moves and people walk out permanently changed. No setlist, no performance. Just the presence of God falling on a room of hungry believers." },
+    family:{ tip:"Frame through spiritual covering and intercession for the family — not just practical tips. This persona thinks in terms of spiritual warfare and generational blessing.", example:"Your home is a spiritual territory. This series teaches you how to pray a hedge of protection over your family, break generational cycles, and disciple your children in the gifts of the Spirit from childhood." },
+    testimony:{ tip:"Focus on dramatic, documented miracles — healing, supernatural intervention, gifts of the Spirit in action. The more specific and verifiable, the more credibility it carries.", example:"This testimony includes before-and-after medical records. Stage 4 pancreatic cancer — completely gone after a healing service. Documented. Verified. This is what TBN was built to broadcast." },
+    films:{ tip:"Frame as Spirit-filled stories rather than feel-good family fare. Emphasize supernatural elements and raw, unfiltered faith in action.", example:"This isn't a sanitized feel-good faith story — it's raw, real, and the supernatural intervention is undeniable. This is the kind of film that doesn't warm your heart, it ignites your faith." },
+    culture:{ tip:"Frame as spiritual warfare and discernment — not social commentary. This persona wants to understand the principalities behind cultural movements so they can pray and act with authority.", example:"This isn't a debate show — it's spiritual discernment training. Understanding the principalities behind today's cultural agenda equips you to pray strategically and act with authority over your territory." },
+    prophecy:{ tip:"HIGH AFFINITY — lead with active prophetic voices, words of knowledge, and real-time alignment between the Spirit's movement and current events. Name specific prophets they trust.", example:"Cindy Jacobs prophesied this specific development in 2022, and it's unfolding now. TBN's prophetic programming gives you the spiritual intelligence to understand what God is doing in the earth right now." },
+    global:{ tip:"Frame as global revival and the Spirit being poured out on all flesh — the worldwide outpouring this persona believes is coming and wants to witness.", example:"The greatest revival in history isn't happening in America — it's exploding in Brazil, Nigeria, and South Korea right now. TBN takes you inside the global outpouring. Don't miss what the Spirit is doing." },
+    kids:{ tip:"Frame as raising the next generation in the gifts of the Spirit and prophetic identity — children who know how to hear God's voice before they're teenagers.", example:"Imagine your children growing up knowing how to hear the voice of God, operate in spiritual gifts, and walk in their prophetic identity from childhood — not discovering it decades later like you had to." }
+  },
+  3:{
+    biblical:{ tip:"Avoid lecture-style. Frame as dialogue and honest exploration — questions are welcomed, not dismissed. Mention younger, relatable hosts rather than established pastors.", example:"This isn't a Bible lecture — it's two 20-somethings having an honest conversation about what Paul actually meant by that controversial passage, including the parts they still wrestle with." },
+    worship:{ tip:"Contemporary and unpolished. Emotional honesty over production quality. Think late-night prayer meeting captured on camera, not a choreographed worship event.", example:"This worship set wasn't rehearsed. The cameras rolled during an unplanned late-night prayer moment, and what happened was completely spontaneous. No lighting rig, no performance — just what happened." },
+    family:{ tip:"Frame around belonging and chosen community — not traditional family structure. This persona is looking for their people, not a prescription for domestic life.", example:"You don't need a perfect family to belong somewhere. This content shows what it actually looks like when broken people build genuine community around faith — and somehow make it work." },
+    testimony:{ tip:"HIGH AFFINITY — authenticity is everything. Include doubt, deconstruction, and hard questions in the testimony arc. Sanitized stories don't land. They want: 'this person had my exact questions.'", example:"She left faith at 19, spent six years doing everything the church warned her about, and came back — not because someone convinced her, but because something undeniable happened. No script. No polish. Just her story." },
+    films:{ tip:"Lead with The Chosen or documentary-style content. Complexity and human messiness win. Triumphalist narratives with easy resolution will land flat or create distrust.", example:"The Chosen is the first thing about the Bible that ever made it feel like real, complicated people — not stained-glass figures. Season 3 will challenge what you thought you knew, and that's the point." },
+    culture:{ tip:"HIGH AFFINITY — this is their category. Lead with mental health, deconstruction, doubt, and honest dialogue. Not apologetics. Not debate. Real conversation with no easy answers.", example:"TBN is launching a new format with two hosts who grew up in the church, left it, and came back — and they're talking about all of it honestly. What broke, what rebuilt, and what they still don't have figured out." },
+    prophecy:{ tip:"Approach with care. Lead with 'how do we live now' rather than end-times charts. Make it about personal resilience and meaning in uncertain times, not theological predictions.", example:"Forget the timeline diagrams — this conversation is about what Biblical prophecy actually says about how to keep showing up when everything feels like it's collapsing. Resilience, not prediction." },
+    global:{ tip:"Frame as global solidarity and diverse voices in the worldwide body of believers. Justice, mutual support, and the expansiveness of Christianity beyond American expression.", example:"The Church isn't an American institution — it's the most ethnically diverse movement in human history. TBN Global shows you what faith looks like in Lagos, Seoul, and São Paulo, and why their story is your story too." },
+    kids:{ tip:"Frame around legacy to the generation below them — what kind of faith environment are they helping create for younger siblings, kids in their world, or their own future children?", example:"If you could give the generation behind you something the church never gave you — real honesty about doubt, community that holds, faith that survives pressure — what would that look like? We're building it." }
+  },
+  4:{
+    biblical:{ tip:"Emphasize globally respected teachers available in their language. Stress the universality of scripture across all cultures and the accessibility of translated content.", example:"Joseph Prince's teaching is now available in 14 languages — and the message of grace doesn't change whether you're hearing it in Tagalog, Portuguese, or Swahili. This is your teaching too." },
+    worship:{ tip:"HIGH AFFINITY — emphasize global worship voices, multilingual events, and the unity of the worldwide church lifting their voices together.", example:"Gather25 is a global worship event with participants from 40 nations. When the music starts, language stops mattering. This is the body of Christ worshipping together — and your voice belongs in it." },
+    family:{ tip:"Frame through universal family values and community belonging across cultures — not culturally specific domestic advice. What every family everywhere wants for their children.", example:"No matter where you're from, the desire to raise your children in faith is the same. TBN's family content speaks to every household regardless of nationality, language, or context." },
+    testimony:{ tip:"Feature international testimonies — voices from the Global South, Asia, or Latin America. Representation is not optional for this persona — it's central to their engagement.", example:"This testimony comes from a pastor in Lagos who started with nothing. What God did through his faithfulness in the middle of poverty and crisis is one of the most remarkable stories we've ever put on air." },
+    films:{ tip:"Highlight faith films featuring international or multicultural stories. Accessibility across language barriers matters — mention subtitle availability.", example:"TBN's international film library now includes faith films produced in India, Brazil, and South Korea — with subtitles in 20 languages being added this year. Your story is finally being told on screen." },
+    culture:{ tip:"Frame as a global conversation — not American commentary. Diverse international voices and perspectives from around the world, not a US-centric cultural debate.", example:"TBN is building a global conversation platform with voices from Nigeria, the Philippines, Brazil, and South Korea. American Christianity is one voice in a worldwide choir — and we want all of them." },
+    prophecy:{ tip:"Frame through God's global redemptive plan for all nations — not US-centric end-times commentary. Every people group is part of the Biblical narrative.", example:"The Biblical story of nations isn't an American story — it's the story of every people group on earth, including yours. God's redemptive plan spans every language and every land, from the beginning." },
+    global:{ tip:"HIGH AFFINITY — this is their category. Lead with specific languages, regional hosts, and international accessibility. Name the languages and regions you serve.", example:"TBN now broadcasts in 16 languages with hosts who grew up in your faith tradition, preaching in your language, understanding your cultural context. This network was built for the global church — including you." },
+    kids:{ tip:"Frame through regional children's programming with local hosts in their country context. Children seeing themselves in their faith programming is deeply compelling.", example:"TBN Kids is now being produced with regional hosts in seven countries — so children in the Philippines, Nigeria, and Brazil see themselves represented in the faith content they grow up watching." }
+  },
+  5:{
+    biblical:{ tip:"Keep it accessible and life-application focused. Avoid theological density. The question this persona is asking: 'What does this mean for my week, not my doctrine?'", example:"You don't need a theology degree to get something real out of this. This 20-minute teaching takes one passage and shows you exactly how it applies to the week you're about to walk into." },
+    worship:{ tip:"Lead with familiar, emotionally accessible music. Christmas and Easter specials are strong entry points. Nostalgia for faith music they grew up with is a genuine hook.", example:"You know this music — you grew up with it. TBN's Christmas worship special brings back the songs that shaped your faith, performed by today's most-loved Christian artists. No church required to feel this." },
+    family:{ tip:"Frame through universal family values without church language. Inspirational rather than prescriptive. What good families do — not what Christian families should do.", example:"Even when faith isn't front and center every day, these conversations still matter. TBN's family content helps you have them without needing a theology background to find it genuinely useful." },
+    testimony:{ tip:"HIGH AFFINITY — lead with the human story. The faith component is secondary. They want to be moved, not taught. Lead with the person, not the message.", example:"This isn't a religious program — it's the story of a man who had everything, lost it, rebuilt it, and found the one thing that couldn't be taken from him. You don't need to be religious to be moved by what happened." },
+    films:{ tip:"HIGH AFFINITY — lead with entertainment quality and emotional storytelling. The Chosen has cultural recognition beyond the church. Position it as great television that happens to be faith-based.", example:"Even people who don't consider themselves religious are calling The Chosen the best storytelling on television right now. It meets you exactly where you are — no prior faith required, no sermon attached." },
+    culture:{ tip:"Frame as meaningful conversations about life, purpose, and values — not apologetics or culture war rhetoric. The kind of conversation that used to happen but doesn't anymore.", example:"This isn't a political program. It's a conversation about what it actually means to live a meaningful life — the kind of honest discussion that used to happen around the dinner table before everyone got busy." },
+    prophecy:{ tip:"Approach lightly — frame as geopolitical curiosity and big-picture thinking, not end-times doctrine. Intellectual interest over theological conviction.", example:"Whether you follow the news or the Bible, what's happening in the Middle East right now is historically remarkable. This program helps you understand why — no theological background required to find it fascinating." },
+    global:{ tip:"Frame as inspiring human stories from around the world. The faith angle is secondary — the humanity is the hook.", example:"These are the stories that global media isn't telling — ordinary people in extraordinary circumstances finding hope in the most unlikely places. You don't have to be religious to find them remarkable." },
+    kids:{ tip:"Lead with nostalgia and values — 'what I wish I had growing up' for parents who want better for their kids without heavy religious pressure.", example:"If you're looking for something your kids can watch that won't contradict the values you're trying to build at home — without being preachy about it — TBN Kids is exactly what you've been searching for." }
+  }
+};
+
+const BAR_COLORS = ["#C9A84C","#9A6AC9","#C96A4C","#4C9AC9","#4CC98A","#A0956A"];
+
+function getGrade(s) {
+  if(s>=85) return{letter:'A',label:'Exceptional Campaign'};
+  if(s>=70) return{letter:'B',label:'Strong Campaign'};
+  if(s>=55) return{letter:'C',label:'Moderate Campaign'};
+  if(s>=40) return{letter:'D',label:'Weak Campaign'};
+  return{letter:'F',label:'Ineffective Campaign'};
+}
+
+function ConvBar({value, color, delta}){
+  return(
+    <div className="cb-wrap">
+      <div className="cb-lbl">
+        <span style={{fontSize:10}}>Conversion Likelihood</span>
+        <span style={{color:value>60?'#81C784':value>35?'#E8C97A':'#EF9A9A',fontWeight:600}}>
+          {value.toFixed(1)}%
+          {delta!==undefined&&delta!==0&&<span className={`db ${delta>0?'dp':'dn'}`}>{delta>0?'+':''}{delta.toFixed(1)}</span>}
+        </span>
+      </div>
+      <div className="cb-track">
+        <div className="cb-fill" style={{width:`${Math.min(100,value)}%`,background:`linear-gradient(90deg,${color}88,${color})`}}/>
+      </div>
+    </div>
+  );
+}
+
+// ── WORKER URL: replace after Cloudflare deployment ──
+const WORKER_URL = 'https://tbn-game-proxy.YOUR-SUBDOMAIN.workers.dev';
+
+async function workerFetch(passcode, payload) {
+  const res = await fetch(WORKER_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ passcode, ...payload })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'HTTP ' + res.status);
+  return data;
+}
+
+function PasscodeGate({ onPasscode }) {
+  const [code, setCode] = useState('');
+  const [error, setError] = useState('');
+  const [checking, setChecking] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!code.trim()) return;
+    setChecking(true);
+    setError('');
+    try {
+      await workerFetch(code.trim(), {
+        model: 'claude-sonnet-4-6', max_tokens: 1,
+        messages: [{ role: 'user', content: 'ping' }]
+      });
+      onPasscode(code.trim());
+    } catch (e) {
+      const msg = e.message || '';
+      if (msg.includes('Invalid access code') || msg.includes('401')) {
+        setError('Invalid access code. Please check and try again.');
+        setChecking(false);
+      } else {
+        onPasscode(code.trim());
+      }
+    }
+  };
+
+  return (
+    <div className="gate">
+      <div style={{ fontSize: 38, marginBottom: 12 }}>🎯</div>
+      <h2 style={{ fontFamily: 'Playfair Display,serif', color: 'var(--gold)', marginBottom: 10 }}>
+        TBN Audience Conversion Simulator
+      </h2>
+      <p style={{ color: 'var(--text-dim)', fontSize: 13, marginBottom: 22, lineHeight: 1.7 }}>
+        Enter your access code to launch the simulator.
+      </p>
+      <input type="password" placeholder="Enter access code…"
+        value={code} onChange={e => { setCode(e.target.value); setError(''); }}
+        style={{ marginBottom: 10, fontSize: 15, padding: '10px 14px' }}
+        onKeyDown={e => e.key === 'Enter' && !checking && handleSubmit()}
+      />
+      {error && <p style={{ color: '#EF9A9A', fontSize: 12, marginBottom: 10, textAlign: 'center' }}>{error}</p>}
+      <button className="btn btn-gold" onClick={handleSubmit}
+        disabled={!code.trim() || checking} style={{ width: '100%', padding: '12px', fontSize: 14 }}>
+        {checking ? 'Verifying…' : 'Enter Simulator →'}
+      </button>
+      <p className="disclaimer" style={{ marginTop: 12 }}>
+        Secure access — your code is verified server-side. No API key required.
+      </p>
+    </div>
+  );
+}
+
+function SetupPhase({onStart}){
+  const ps = TBN_PERSONAS.map(p=>({
+    ...p,
+    conversions:Object.fromEntries(TBN_CONTENT.map(c=>[c.id,AFFINITY[p.id][c.id]])),
+    currentShare:p.marketShare,
+    history:[]
+  }));
+  return(
+    <div>
+      <div className="phase-title">TBN Core Audience Personas</div>
+      <p style={{textAlign:'center',color:'var(--text-dim)',marginBottom:18,fontSize:13,lineHeight:1.6}}>
+        Pre-loaded from TBN's Core Personas &amp; Strategic Programming Framework.<br/>Review, then launch the simulator.
+      </p>
+      <div className="setup-grid">
+        {TBN_PERSONAS.map(p=>(
+          <div key={p.id} className="pp">
+            <div className="pp-hd">
+              <div className="p-av" style={{borderColor:p.color}}>{p.emoji}</div>
+              <div>
+                <div className="p-nm">{p.name}</div>
+                <span className="p-sh" style={{color:p.color,background:`${p.color}18`}}>{p.marketShare}% share • Ages {p.age}</span>
+              </div>
+            </div>
+            <p className="p-ds">{p.description}</p>
+            <div style={{marginBottom:6}}>
+              <div className="p-lbl">Motivated By</div>
+              <div className="p-tg">{p.motivations.map(m=><span key={m} className="p-t">{m}</span>)}</div>
+            </div>
+            <div>
+              <div className="p-lbl">Content Preferences</div>
+              <div className="p-tg">{p.contentPrefs.map(c=><span key={c} className="p-t" style={{borderColor:`${p.color}40`,color:p.color}}>{c}</span>)}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="action-row">
+        <button className="btn btn-gold" onClick={()=>onStart(ps)}>Launch Campaign Simulator →</button>
+      </div>
+    </div>
+  );
+}
+
+function CoachPanel({personaIdx, contentId, onCopy}){
+  const[open,setOpen]=useState(true);
+  const cd=COACHING[personaIdx]?.[contentId];
+  const p=TBN_PERSONAS[personaIdx];
+  const aff=AFFINITY[personaIdx]?.[contentId]||50;
+  const affLabel=aff>=80?'🟢 High Affinity':aff>=65?'🟡 Medium Affinity':'🔴 Low Affinity';
+  const affColor=aff>=80?'#81C784':aff>=65?'#E8C97A':'#EF9A9A';
+  if(!cd) return null;
+  return(
+    <div className="coach">
+      <div className="coach-hd" onClick={()=>setOpen(o=>!o)}>
+        <span style={{fontSize:15}}>🎯</span>
+        <div className="coach-title">Pitch Coach — {p.name}</div>
+        <span className="coach-aff" style={{color:affColor}}>{affLabel}</span>
+        <span className="coach-tog">{open?'Hide ▲':'Show ▼'}</span>
+      </div>
+      {open&&(
+        <>
+          <div className="coach-body">
+            <div className="coach-tip">
+              <div className="ct-tip-lbl">💡 Strategy</div>
+              <div className="ct-tip-txt">{cd.tip}</div>
+            </div>
+            <div className="coach-tip">
+              <div className="ct-tip-lbl">📝 Example Pitch</div>
+              <div className="ct-example">"{cd.example}"</div>
+              <button className="cp-btn" onClick={()=>onCopy(cd.example)}>Use this pitch ↗</button>
+            </div>
+          </div>
+          <div className="coach-pain">
+            <strong style={{color:'var(--gold)'}}>⚠ Avoid triggering:</strong> {p.painPoints.join(' • ')}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function GamePhase({personas:initP, onEnd}){
+  const[personas,setPersonas]=useState(initP);
+  const[activeIdx,setActiveIdx]=useState(0);
+  const[messages,setMessages]=useState([]);
+  const[input,setInput]=useState('');
+  const[selCt,setSelCt]=useState('biblical');
+  const[iteration,setIteration]=useState(0);
+  const[loading,setLoading]=useState(false);
+  const[lastImpact,setLastImpact]=useState(null);
+  const[done,setDone]=useState(false);
+  const[toast,setToast]=useState('');
+  const msgEnd=useRef(null);
+  const MAX=5;
+
+  useEffect(()=>{msgEnd.current?.scrollIntoView({behavior:'smooth'});},[messages,loading]);
+
+  const showToast=(m)=>{setToast(m);setTimeout(()=>setToast(''),2000);};
+  const ap=personas[activeIdx];
+  const ctObj=TBN_CONTENT.find(c=>c.id===selCt);
+
+  const sysPrompt=(p)=>`You are roleplaying as a TBN viewer: "${p.name}".
+Profile: ${p.description}
+Motivations: ${p.motivations.join(', ')}
+Content they love: ${p.contentPrefs.join(', ')}
+What REPELS them: ${p.painPoints.join(', ')}
+
+A TBN marketer is pitching "${ctObj?.label}" content to you.
+
+Respond as this persona with GENUINE emotional authenticity:
+- If the pitch is generic or doesn't match your values → be skeptical or neutral
+- If it directly speaks to your motivations with specific, relevant language → respond positively  
+- If it triggers your pain points → push back or express discomfort
+- Use real emotions: excited, skeptical, curious, moved, resistant, hopeful, dismissive, intrigued, underwhelmed, challenged
+
+Keep your in-character response to 2-4 sentences. Be real, not polished.
+
+Then on a NEW LINE write EXACTLY:
+EMOTION: [one word]
+CONVERSION_DELTA: [number -15 to +25]
+REASONING: [one sentence]`;
+
+  const impactPrompt=(pitch,ctLabel,targetName,op)=>
+    `A TBN marketer pitched "${ctLabel}" content to "${targetName}" with: "${pitch}"
+How does this affect "${op.name}"? Profile: ${op.description}. Motivations: ${op.motivations.join(', ')}.
+ONLY respond with:
+IMPACT_DELTA: [number -8 to +15]
+REASON: [4 words max]`;
+
+  const send=async()=>{
+    if(!input.trim()||loading||iteration>=MAX) return;
+    const uMsg=input.trim();
+    setInput('');
+    setLoading(true);
+    setMessages(p=>[...p,{role:'user',text:uMsg,ct:ctObj?.label}]);
+    try{
+      const d1=await workerFetch(window._passcode,{
+        model:'claude-sonnet-4-6',max_tokens:480,
+        system:sysPrompt(ap),
+        messages:[
+          ...messages.filter(m=>m.role!=='system').map(m=>({role:m.role==='user'?'user':'assistant',content:m.text})),
+          {role:'user',content:uMsg}
+        ]
+      });
+      const raw=d1.content[0].text;
+      const emotion=(raw.match(/EMOTION:\s*(.+)/)||[])[1]?.trim()||'thoughtful';
+      const delta=parseFloat((raw.match(/CONVERSION_DELTA:\s*([-\d.]+)/)||[])[1]||'0');
+      const cleanText=raw.split('\nEMOTION:')[0].trim();
+
+      const impacts=await Promise.all(personas.map(async(p,idx)=>{
+        if(idx===activeIdx) return{idx,delta,main:true,reason:''};
+        try{
+          const d2=await workerFetch(window._passcode,{model:'claude-sonnet-4-6',max_tokens:80,messages:[{role:'user',content:impactPrompt(uMsg,ctObj?.label,ap.name,p)}]});
+          const txt=d2.content[0].text;
+          return{idx,delta:parseFloat((txt.match(/IMPACT_DELTA:\s*([-\d.]+)/)||[])[1]||'0'),reason:(txt.match(/REASON:\s*(.+)/)||[])[1]?.trim()||'',main:false};
+        }catch{return{idx,delta:0,reason:'',main:false};}
+      }));
+
+      setPersonas(prev=>prev.map((p,idx)=>{
+        const imp=impacts.find(o=>o.idx===idx);
+        if(!imp) return p;
+        const oldV=p.conversions[selCt]||50;
+        const newV=Math.min(100,Math.max(0,oldV+imp.delta));
+        const sc=imp.delta*0.06*(p.marketShare/100);
+        return{...p,conversions:{...p.conversions,[selCt]:newV},currentShare:Math.max(0,p.currentShare+sc),history:[...p.history,{iter:iteration+1,delta:imp.delta,ct:selCt}]};
+      }));
+
+      setLastImpact(impacts);
+      setMessages(prev=>[...prev,{role:'persona',text:cleanText,emotion,delta}]);
+      const ni=iteration+1;
+      setIteration(ni);
+      if(ni>=MAX) setDone(true);
+    }catch(e){
+      setMessages(prev=>[...prev,{role:'persona',text:`[Error: ${e.message}]`,emotion:'error',delta:0}]);
+    }
+    setLoading(false);
+  };
+
+  return(
+    <div>
+      {toast&&<div className="toast">✓ {toast}</div>}
+      <div className="game-layout">
+        {/* SIDEBAR */}
+        <div>
+          <div style={{fontFamily:'Playfair Display,serif',fontSize:14,color:'var(--gold)',marginBottom:9}}>📊 Audience Segments</div>
+          {personas.map((p,i)=>{
+            const cv=p.conversions[selCt]||50;
+            const td=cv-(initP[i].conversions[selCt]||50);
+            return(
+              <div key={i} className={`sc ${i===activeIdx?'active':''}`} onClick={()=>!done&&!loading&&setActiveIdx(i)}>
+                <div className="sc-hd">
+                  <span style={{fontSize:16}}>{p.emoji}</span>
+                  <div className="sc-nm">{p.name}</div>
+                  <div className="sc-sh">{p.currentShare.toFixed(1)}%</div>
+                </div>
+                <div className="sc-bd">
+                  <ConvBar value={cv} color={BAR_COLORS[i]} delta={td!==0?td:undefined}/>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* CHAT */}
+        <div className="chat-wrap">
+          <div className="ch-hd">
+            <span style={{fontSize:26}}>{ap.emoji}</span>
+            <div className="ch-inf">
+              <div className="ch-nm">{ap.name}</div>
+              <div className="ch-ds">{ap.description.slice(0,85)}…</div>
+            </div>
+            <div className="it-wr">
+              <div style={{fontSize:10,color:'var(--text-dim)'}}>Iterations</div>
+              <div className="it-dots">{Array(MAX).fill(0).map((_,i)=><div key={i} className={`it-dot ${i<iteration?'used':i===iteration?'cur':''}`}/>)}</div>
+              <div style={{fontSize:11,color:'var(--gold)',marginTop:3}}>{iteration}/{MAX}</div>
+            </div>
+          </div>
+
+          <div className="chat-msgs">
+            {messages.length===0&&(
+              <div className="empty-chat">
+                <div style={{fontSize:34}}>{ap.emoji}</div>
+                <p style={{fontSize:13}}>Use the <strong style={{color:'var(--gold)'}}>Pitch Coach</strong> below for tailored guidance, then craft your message.<br/>You have {MAX} iterations to convert this persona.</p>
+              </div>
+            )}
+            {messages.map((m,i)=>(
+              <div key={i} className={`msg ${m.role==='user'?'mu':'mp'}`}>
+                <div className="m-lbl">{m.role==='user'?'🎙 Marketer':`${ap.emoji} ${ap.name}`}{m.ct&&<span style={{opacity:.5,marginLeft:5}}>• {m.ct}</span>}</div>
+                <div className="m-bub">{m.text}</div>
+                {m.emotion&&<div className="m-meta">
+                  <span className="m-em">{m.emotion}</span>
+                  {m.delta!==undefined&&m.delta!==0&&<span className={`db ${m.delta>0?'dp':'dn'}`}>{m.delta>0?'+':''}{m.delta.toFixed(1)}% likelihood</span>}
+                </div>}
+              </div>
+            ))}
+            {loading&&(
+              <div className="msg mp">
+                <div className="m-lbl">{ap.emoji} {ap.name}</div>
+                <div className="m-bub"><div className="typing"><div className="td"/><div className="td"/><div className="td"/></div></div>
+              </div>
+            )}
+            <div ref={msgEnd}/>
+          </div>
+
+          <div className="chat-inp">
+            <div className="ct-lbl">Content Category</div>
+            <div className="ct-row">
+              {TBN_CONTENT.map(c=>(
+                <button key={c.id} className={`ct-btn ${selCt===c.id?'sel':''}`} onClick={()=>setSelCt(c.id)} disabled={loading}>
+                  {c.icon} {c.label}
+                </button>
+              ))}
+            </div>
+            <div className="inp-row">
+              <textarea placeholder="Craft your pitch… check the Coach below for tailored guidance first."
+                value={input} onChange={e=>setInput(e.target.value)}
+                onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}}}
+                disabled={loading||done}/>
+              <button className="btn btn-gold" onClick={send} disabled={loading||done||!input.trim()}>
+                {loading?'…':'Send'}
+              </button>
+            </div>
+            {done&&<div style={{textAlign:'center',marginTop:11}}>
+              <button className="btn btn-gold" onClick={()=>onEnd(personas,messages,ctObj?.label)}>View Campaign Results →</button>
+            </div>}
+          </div>
+
+          <CoachPanel personaIdx={activeIdx} contentId={selCt} onCopy={(t)=>{setInput(t);showToast('Copied to input!');}}/>
+
+          {lastImpact&&(
+            <div className="imp-panel">
+              <div className="imp-title">⚡ Live Audience Impact — Iteration {iteration}</div>
+              <div className="imp-grid">
+                {lastImpact.map(imp=>{
+                  const p=personas[imp.idx];
+                  const cls=imp.delta>0?'i-pos':imp.delta<0?'i-neg':'i-neu';
+                  return(
+                    <div key={imp.idx} className="i-chip">
+                      <div className="i-nm">{p.emoji} {p.name}</div>
+                      <div className={`i-val ${cls}`}>{imp.delta>0?'+':''}{imp.delta.toFixed(1)}%{imp.main&&<span style={{fontSize:9,marginLeft:3,opacity:.6}}>(active)</span>}</div>
+                      {imp.reason&&<div className="i-rs">{imp.reason}</div>}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ResultsPhase({initP, finalP, messages, contentType, onRestart}){
+  const deltas=finalP.map((p,i)=>({
+    name:p.name,emoji:p.emoji,
+    initC:initP[i].conversions?.biblical||70,
+    finalC:p.conversions?.biblical||70,
+    initS:initP[i].marketShare,
+    finalS:p.currentShare,
+    sdelta:p.currentShare-initP[i].marketShare
+  }));
+  const avgI=deltas.reduce((s,d)=>s+(d.finalC-d.initC),0)/deltas.length;
+  const pos=deltas.filter(d=>d.finalC>d.initC).length;
+  const score=Math.min(100,Math.max(0,avgI*2.5+pos*9));
+  const grade=getGrade(score);
+
+  const exportPDF=()=>{
+    const{jsPDF}=window.jspdf;
+    const doc=new jsPDF();
+    doc.setFont('helvetica','bold');doc.setFontSize(18);
+    doc.text('TBN Campaign Simulation Report',20,22);
+    doc.setFont('helvetica','normal');doc.setFontSize(11);
+    doc.text(`Content Focus: ${contentType||'Mixed'}`,20,34);
+    doc.text(`Campaign Grade: ${grade.letter} — ${grade.label}`,20,42);
+    doc.text(`Score: ${score.toFixed(1)}/100  |  Avg Shift: ${avgI.toFixed(1)}%  |  Influenced: ${pos}/6`,20,50);
+    doc.line(20,56,190,56);
+    doc.setFont('helvetica','bold');doc.text('Persona Impact',20,64);
+    doc.setFont('helvetica','normal');
+    let y=74;
+    deltas.forEach(d=>{
+      doc.text(`${d.name}`,20,y);
+      doc.text(`Conv: ${d.initC.toFixed(1)}% → ${d.finalC.toFixed(1)}% (${d.finalC>d.initC?'+':''}${(d.finalC-d.initC).toFixed(1)}%)  Share: ${d.initS.toFixed(1)}% → ${d.finalS.toFixed(1)}%`,28,y+7);
+      y+=18;if(y>265){doc.addPage();y=20;}
+    });
+    doc.line(20,y,190,y);y+=10;
+    doc.setFont('helvetica','bold');doc.text('Transcript',20,y);y+=10;
+    doc.setFont('helvetica','normal');
+    messages.forEach(m=>{
+      const lines=doc.splitTextToSize(`${m.role==='user'?'Marketer':'Persona'}: ${m.text}`,165);
+      lines.forEach(l=>{doc.text(l,20,y);y+=6;if(y>270){doc.addPage();y=20;}});
+      y+=3;
+    });
+    doc.save('TBN_Campaign_Report.pdf');
+  };
+
+  return(
+    <div>
+      <div className="phase-title">Campaign Results</div>
+      <div className="res-grid">
+        <div className="card">
+          <div className="card-title">📈 Market Share Shift</div>
+          {deltas.map((d,i)=>(
+            <div key={i} className="sb-row">
+              <div className="sb-nm" title={d.name}>{d.emoji} {d.name}</div>
+              <div className="sb-trk">
+                <div className="sb-fill" style={{width:`${d.finalS}%`,background:BAR_COLORS[i],minWidth:d.finalS>0?26:0}}>
+                  {d.finalS.toFixed(1)}%
+                </div>
+              </div>
+              <div className="sb-dl" style={{color:d.sdelta>0?'#81C784':d.sdelta<0?'#EF9A9A':'var(--gold)'}}>
+                {d.sdelta>0?'+':''}{d.sdelta.toFixed(2)}%
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="grade-box">
+          <div className="g-letter">{grade.letter}</div>
+          <div className="g-lbl">{grade.label}</div>
+          <div className="g-score">{score.toFixed(0)}/100</div>
+          <div style={{marginTop:12,fontSize:12,color:'var(--text-dim)',lineHeight:1.8}}>
+            {pos}/6 personas positively influenced<br/>
+            Avg conversion shift: {avgI>0?'+':''}{avgI.toFixed(1)}%<br/>
+            Content focus: {contentType||'Mixed'}
+          </div>
+        </div>
+      </div>
+      <div className="action-row">
+        <button className="btn btn-gold" onClick={exportPDF}>⬇ Export PDF Report</button>
+        <button className="btn btn-outline" onClick={onRestart}>↺ New Campaign</button>
+      </div>
+    </div>
+  );
+}
+
+// ─── WELCOME MODAL ────────────────────────────────────────────────────────────
+function WelcomeModal({onClose}){
+  return(
+    <div className="modal-overlay" onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
+      <div className="modal">
+        <button className="modal-close" onClick={onClose}>✕</button>
+        <div className="modal-logo">Trinity Broadcasting Network</div>
+        <h2>Audience Conversion Simulator</h2>
+        <p className="modal-sub">A simulated marketing campaign tool that lets you test content pitches against TBN's six core audience personas — powered by Claude AI — before committing to real campaign spend.</p>
+
+        <div className="modal-divider"/>
+
+        <div className="modal-section">
+          <h3>🎯 What This Tool Does</h3>
+          <p>You play the role of a TBN marketer pitching content ideas to AI-driven viewer personas. Each persona responds with genuine emotional reactions, and every pitch you make ripples across all six audience segments simultaneously. At the end, you receive a campaign grade and exportable PDF report.</p>
+          <div className="modal-highlight">Think of each session as a simulated campaign journey — five chances to find the message that converts your target audience into a regular TBN viewer.</div>
+        </div>
+
+        <div className="modal-divider"/>
+
+        <div className="modal-section">
+          <h3>📋 How To Play — Step by Step</h3>
+          <div className="modal-steps">
+            <div className="modal-step">
+              <div className="modal-step-num">1</div>
+              <div className="modal-step-body">
+                <div className="modal-step-title">Enter Your API Key</div>
+                <div className="modal-step-desc">Paste your Anthropic API key to activate the AI. This is used only in your browser session and is never stored anywhere. Get a key at console.anthropic.com.</div>
+              </div>
+            </div>
+            <div className="modal-step">
+              <div className="modal-step-num">2</div>
+              <div className="modal-step-body">
+                <div className="modal-step-title">Review the Personas</div>
+                <div className="modal-step-desc">Six TBN core audience personas are pre-loaded from the TBN Strategic Programming Framework. Review their descriptions, motivations, content preferences, and pain points before you start.</div>
+              </div>
+            </div>
+            <div className="modal-step">
+              <div className="modal-step-num">3</div>
+              <div className="modal-step-body">
+                <div className="modal-step-title">Choose Your Persona & Content Category</div>
+                <div className="modal-step-desc">Click a persona in the left sidebar to make them your active conversation target. Then select one of nine TBN content categories (Biblical Teaching, Worship, Family, etc.) to focus your pitch.</div>
+              </div>
+            </div>
+            <div className="modal-step">
+              <div className="modal-step-num">4</div>
+              <div className="modal-step-body">
+                <div className="modal-step-title">Use the Pitch Coach First</div>
+                <div className="modal-step-desc">Before typing your message, read the Pitch Coach panel below the input. It shows you the affinity level for your selected persona + content combination, gives you a tailored strategy, an example pitch you can copy directly, and warns you which pain points to avoid.</div>
+              </div>
+            </div>
+            <div className="modal-step">
+              <div className="modal-step-num">5</div>
+              <div className="modal-step-body">
+                <div className="modal-step-title">Pitch & Watch the Impact</div>
+                <div className="modal-step-desc">Send your message. The active persona responds with an emotional reaction and a conversion delta. Simultaneously, the Live Impact panel shows how all six segments were affected. Watch the sidebar bars update in real time.</div>
+              </div>
+            </div>
+            <div className="modal-step">
+              <div className="modal-step-num">6</div>
+              <div className="modal-step-body">
+                <div className="modal-step-title">Complete 5 Iterations & Review Results</div>
+                <div className="modal-step-desc">You have exactly five back-and-forth exchanges. Use them strategically — each one counts. When complete, view your campaign grade, market share shift, and export the full PDF report.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="modal-divider"/>
+
+        <div className="modal-section">
+          <h3>💡 Tips for Getting Strong Results</h3>
+          <div className="modal-tip-grid">
+            <div className="modal-tip">
+              <div className="modal-tip-icon">🎯</div>
+              <div className="modal-tip-title">Be Specific</div>
+              <div className="modal-tip-text">Generic pitches ("TBN has great content") produce low or neutral scores. Reference the persona's actual motivations, name specific programs, and use language that resonates with their faith background.</div>
+            </div>
+            <div className="modal-tip">
+              <div className="modal-tip-icon">🔄</div>
+              <div className="modal-tip-title">Build on Each Response</div>
+              <div className="modal-tip-text">The persona remembers everything you said. If they pushed back, address it directly. If they responded positively, go deeper. Don't repeat yourself — compound your pitch across all five iterations.</div>
+            </div>
+            <div className="modal-tip">
+              <div className="modal-tip-icon">⚠️</div>
+              <div className="modal-tip-title">Avoid Pain Points</div>
+              <div className="modal-tip-text">Each persona has specific things that repel them. The Coach always shows these. Triggering a pain point can wipe out gains from earlier iterations — sometimes across multiple personas at once.</div>
+            </div>
+            <div className="modal-tip">
+              <div className="modal-tip-icon">📊</div>
+              <div className="modal-tip-title">Watch the Sidebar</div>
+              <div className="modal-tip-text">The best campaigns move multiple persona bars simultaneously. If only your active persona is moving, you're running a narrow campaign. Look for content angles with crossover appeal to maximize market share gains.</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="modal-divider"/>
+
+        <div style={{textAlign:'center',paddingTop:4}}>
+          <button className="btn btn-gold" onClick={onClose} style={{minWidth:160}}>Start Simulating →</button>
+          <p style={{fontSize:11,color:'var(--text-dim)',marginTop:10}}>This dialog won't show again this session. Access help anytime via the <strong style={{color:'var(--gold)'}}>?</strong> button at bottom-left.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── HELP DRAWER ─────────────────────────────────────────────────────────────
+function HelpDrawer({open, onClose}){
+  return(
+    <>
+      {open&&<div className="help-overlay" onClick={onClose}/>}
+      <div className={`help-drawer ${open?'open':''}`}>
+        <div className="help-drawer-close">
+          <div className="help-drawer-title">📖 Help & Reference</div>
+          <button className="hd-close-btn" onClick={onClose}>Close ✕</button>
+        </div>
+
+        <div className="help-section">
+          <h3>What Is This Tool?</h3>
+          <p>The TBN Audience Conversion Simulator is a simulated marketing campaign environment. You test content pitches against AI-driven versions of TBN's six core audience personas to discover which messages, content types, and angles are most likely to convert each segment into regular viewers — before investing in real production or media spend.</p>
+          <p>Think of each 5-iteration session as a compressed campaign journey from first impression to conversion decision.</p>
+          <p><strong style={{color:'var(--cream)'}}>Access:</strong> The simulator is protected by an access code. Enter the code provided by your TBN team administrator on the login screen. The code is verified securely — no personal API key is required.</p>
+        </div>
+
+        <div className="help-section">
+          <h3>The Six Personas</h3>
+          <p>All personas are sourced directly from TBN's Core Personas & Strategic Programming Framework document. Each has a distinct profile including age range, faith background, content preferences, motivations, and pain points.</p>
+          <ul>
+            <li><strong>👩‍🦳 Faith-Rooted Traditionalist (30%)</strong> — Ages 55–75. Seeks Biblical truth, legacy teaching, and stability. High affinity for Biblical Teaching and Prophecy.</li>
+            <li><strong>👩‍👧 Hope-Seeking Middle America Mom (18%)</strong> — Ages 30–50. Family-focused, spiritually leading her home. High affinity for Family & Relationships and Christian Films.</li>
+            <li><strong>🙌 Spirit-Empowered Believer (15%)</strong> — Ages 25–55. Charismatic/Pentecostal. Seeks miracles, revival, breakthrough. High affinity for Worship and Global Ministry.</li>
+            <li><strong>🧑‍💻 Next-Gen Christian Explorer (12%)</strong> — Ages 18–34. Navigating doubt. Values authenticity over polish. High affinity for Culture & Faith Talks and Testimony.</li>
+            <li><strong>🌍 Global Faith Connector (15%)</strong> — Ages 25–60. International, mobile-first. High affinity for Global & Multilingual and Worship.</li>
+            <li><strong>🛋️ Cultural Christian Viewer (10%)</strong> — Ages 35–65. Heritage Christian, low engagement. High affinity for Christian Films and Inspirational Testimony.</li>
+          </ul>
+        </div>
+
+        <div className="help-section">
+          <h3>The Nine Content Categories</h3>
+          <ul>
+            <li><strong>📖 Biblical Teaching</strong> — Expository teaching, sermon broadcasts, thematic doctrinal series, legacy pastor programming.</li>
+            <li><strong>🎵 Worship & Encounter</strong> — Live worship events, choir specials, revival gatherings, healing services, prayer moments.</li>
+            <li><strong>🏡 Family & Relationships</strong> — Marriage programming, parenting shows, multi-generational faith content, family devotionals.</li>
+            <li><strong>✨ Inspirational Testimony</strong> — Personal testimonies, faith documentaries, redemption stories, biographical features.</li>
+            <li><strong>🎬 Christian Films</strong> — Faith-based movies, holiday specials, Biblical dramatizations, family-safe entertainment.</li>
+            <li><strong>💬 Culture & Faith Talks</strong> — Talk shows, podcast discussions, faith & current events, apologetics, mental health & faith.</li>
+            <li><strong>🌐 Prophecy & World Events</strong> — Israel-focused programming, end-times teaching, Biblical worldview commentary.</li>
+            <li><strong>🌍 Global & Multilingual</strong> — Translated sermons, regional hosts, local worship, international conferences.</li>
+            <li><strong>🌟 Kids & Next-Gen Faith</strong> — Children's programming, teen faith discussions, youth worship content.</li>
+          </ul>
+        </div>
+
+        <div className="help-section">
+          <h3>The Audience Segments Sidebar</h3>
+          <p>The left panel shows all six personas simultaneously throughout the campaign. Here's what each element means:</p>
+          <ul>
+            <li><strong>Market Share Badge</strong> — The live percentage next to each persona name. Starts at the TBN document values (30%, 18%, etc.) and drifts slightly after each iteration based on how well your pitch lands.</li>
+            <li><strong>Conversion Likelihood Bar</strong> — Shows the probability of that persona becoming a regular viewer for the currently selected content category. Color codes automatically: <span className="help-badge hb-green">green above 60%</span> <span className="help-badge hb-gold">amber 35–60%</span> <span className="help-badge hb-red">red below 35%</span></li>
+            <li><strong>Delta Badge</strong> — Appears after your first message. Shows the cumulative shift since session start. <span className="help-badge hb-green">+8.2</span> means you've gained 8.2 points across all your iterations so far.</li>
+            <li><strong>Gold border</strong> — Indicates your currently active conversation persona.</li>
+          </ul>
+          <p>Switching personas is only allowed before your first message is sent. Once the conversation starts, the active persona is locked for that session.</p>
+        </div>
+
+        <div className="help-section">
+          <h3>The Pitch Coach</h3>
+          <p>The Pitch Coach panel appears below the message input. It updates every time you switch persona or content category. It contains:</p>
+          <ul>
+            <li><strong>Affinity Indicator</strong> — <span className="help-badge hb-green">🟢 High Affinity</span> <span className="help-badge hb-gold">🟡 Medium</span> <span className="help-badge hb-red">🔴 Low</span> — tells you upfront how receptive this persona is to this content category based on TBN's own programming data.</li>
+            <li><strong>Strategy</strong> — Specific guidance on what language, framing, references, and emotional angles resonate with this persona for this content type.</li>
+            <li><strong>Example Pitch</strong> — A full ready-to-use pitch. Click <em>"Use this pitch ↗"</em> to copy it directly into the input field. Use it as-is or as a starting point to personalize.</li>
+            <li><strong>Pain Points to Avoid</strong> — What will actively push this persona away. Triggering these in your pitch can produce negative conversion deltas even if other aspects land well.</li>
+          </ul>
+        </div>
+
+        <div className="help-section">
+          <h3>The Live Impact Panel</h3>
+          <p>Appears below the Pitch Coach after each message. Shows how all six personas were affected by your pitch — not just the one you're talking to. Each chip displays:</p>
+          <ul>
+            <li><strong>Impact Delta</strong> — How much that persona's conversion likelihood shifted this iteration. The active persona's delta reflects their direct response; the others reflect AI-modeled spillover from the same pitch.</li>
+            <li><strong>Reason</strong> — A brief phrase explaining why that persona was affected the way they were.</li>
+            <li><strong>(active)</strong> label marks the persona you're directly conversing with.</li>
+          </ul>
+          <p>Watch this panel strategically: if a pitch moves multiple personas positively, you've found a crossover message worth developing further.</p>
+        </div>
+
+        <div className="help-section">
+          <h3>Iteration Strategy</h3>
+          <p>You have exactly five iterations per session. Use them deliberately:</p>
+          <ul>
+            <li><strong>Iteration 1</strong> — Lead with your strongest, most targeted angle. Establish relevance immediately.</li>
+            <li><strong>Iterations 2–3</strong> — Respond to their emotional reaction. If they pushed back, address the objection. If they were positive, go deeper on what resonated.</li>
+            <li><strong>Iterations 4–5</strong> — Close. Reinforce the most compelling elements, add specifics (program names, format, timing), and make the case for regular viewing.</li>
+          </ul>
+          <p>Each iteration compounds on the previous. The AI persona remembers your full conversation history and will respond to contradictions or repetition negatively.</p>
+        </div>
+
+        <div className="help-section">
+          <h3>Campaign Results & Scoring</h3>
+          <p>After iteration 5, clicking "View Campaign Results" shows:</p>
+          <ul>
+            <li><strong>Market Share Shift chart</strong> — Each persona's initial vs. final market share with the delta shown on the right.</li>
+            <li><strong>Campaign Grade (A–F)</strong> — Calculated from: average conversion improvement × 2.5 + number of positively influenced personas × 9.</li>
+            <li><strong>Effectiveness Score (0–100)</strong> — The numeric score behind the letter grade.</li>
+            <li><strong>Supporting stats</strong> — How many of 6 personas you influenced, average conversion shift, and which content category was used.</li>
+          </ul>
+          <div className="modal-score-row">
+            <span className="modal-score-chip" style={{background:'rgba(76,175,80,.2)',color:'#81C784'}}>A  85–100</span>
+            <span className="modal-score-chip" style={{background:'rgba(201,168,76,.15)',color:'#E8C97A'}}>B  70–84</span>
+            <span className="modal-score-chip" style={{background:'rgba(201,168,76,.1)',color:'var(--gold)'}}>C  55–69</span>
+            <span className="modal-score-chip" style={{background:'rgba(244,67,54,.1)',color:'#EF9A9A'}}>D  40–54</span>
+            <span className="modal-score-chip" style={{background:'rgba(244,67,54,.2)',color:'#EF9A9A'}}>F  0–39</span>
+          </div>
+        </div>
+
+        <div className="help-section">
+          <h3>Exporting the PDF Report</h3>
+          <p>The Export PDF button generates a full campaign report in your browser — no server required. The PDF includes session metadata, persona impact summary (conversion and share shifts for all six), and the complete conversation transcript. It saves as <em>TBN_Campaign_Report.pdf</em> to your downloads folder.</p>
+        </div>
+
+        <div className="help-section">
+          <h3>Running Multiple Sessions</h3>
+          <p>Click <em>"↺ New Campaign"</em> on the results screen to start fresh. All data resets — persona baselines return to their original values from the TBN document, and you can try a different content category, persona, or pitch angle. There is no limit on the number of sessions you can run.</p>
+          <p>A useful practice is running the same persona with two different content categories across separate sessions to compare which drives stronger conversion for that segment.</p>
+        </div>
+
+        <div style={{textAlign:'center',paddingTop:8,borderTop:'1px solid rgba(201,168,76,.15)',marginTop:8}}>
+          <p style={{fontSize:11,color:'var(--text-dim)',lineHeight:1.7}}>TBN Audience Conversion Simulator v2.0<br/>Powered by Claude AI (claude-sonnet-4-6) • Personas sourced from TBN Core Personas & Strategic Programming Framework</p>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ─── APP ──────────────────────────────────────────────────────────────────────
+function App(){
+  const[phase,setPhase]=useState('apikey');
+  const[personas,setPersonas]=useState([]);
+  const[finalP,setFinalP]=useState([]);
+  const[msgs,setMsgs]=useState([]);
+  const[ct,setCt]=useState('');
+  const[showWelcome,setShowWelcome]=useState(false);
+  const[showHelp,setShowHelp]=useState(false);
+
+  const setPasscode=(p)=>{
+    window._passcode = p;  // stored in memory only, never in DOM or localStorage
+    setShowWelcome(true);
+    setPhase('setup');
+  };
+
+  const steps=[{label:'API Key',id:'apikey'},{label:'Personas',id:'setup'},{label:'Campaign',id:'game'},{label:'Results',id:'results'}];
+
+  return(
+    <div className="app">
+      <div className="header">
+        <div className="header-logo">Trinity Broadcasting Network</div>
+        <h1>Audience <span>Conversion</span> Simulator</h1>
+        <p>AI-powered campaign journey • 6 TBN core personas • 5-iteration limit • Live audience impact</p>
+      </div>
+      {phase!=='apikey'&&(
+        <div className="step-indicator">
+          {steps.map((s,i)=>(
+            <React.Fragment key={s.id}>
+              <div className={`step ${phase===s.id?'active':steps.findIndex(x=>x.id===phase)>i?'done':''}`}>
+                <div className="step-circle">{i+1}</div>
+                <div className="step-label">{s.label}</div>
+              </div>
+              {i<steps.length-1&&<div className="step-line"/>}
+            </React.Fragment>
+          ))}
+        </div>
+      )}
+      {phase==='apikey'&&<PasscodeGate onPasscode={setPasscode}/>}
+      {phase==='setup'&&<SetupPhase onStart={ps=>{setPersonas(ps);setPhase('game');}}/>}
+      {phase==='game'&&<GamePhase personas={personas} onEnd={(fp,m,c)=>{setFinalP(fp);setMsgs(m);setCt(c);setPhase('results');}}/>}
+      {phase==='results'&&<ResultsPhase initP={personas} finalP={finalP} messages={msgs} contentType={ct} onRestart={()=>{setPersonas([]);setPhase('setup');}}/>}
+
+      {/* WELCOME MODAL — shown once after API key entry */}
+      {showWelcome&&<WelcomeModal onClose={()=>setShowWelcome(false)}/>}
+
+      {/* PERSISTENT HELP BUTTON */}
+      {phase!=='apikey'&&(
+        <button className="help-btn" onClick={()=>setShowHelp(true)} title="Help & Reference">?</button>
+      )}
+
+      {/* HELP DRAWER */}
+      <HelpDrawer open={showHelp} onClose={()=>setShowHelp(false)}/>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
