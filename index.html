@@ -11,11 +11,26 @@
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Source+Sans+3:wght@300;400;600&display=swap" rel="stylesheet"/>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* old colors
 :root {
   --gold: #C9A84C; --gold-light: #E8C97A; --navy: #0B1A2E;
   --navy-mid: #122240; --navy-light: #1A3358; --cream: #F5EDD8;
   --text: #F0E6CC; --text-dim: #A89B7A;
 }
+*/
+
+:root {
+  --gold: #B7913A;         /* Slightly deeper gold for contrast */
+  --gold-light: #D4AF5A;   /* Warmer gold for accents/hover */
+  --navy: #F8F9FC;         /* Soft off-white background */
+  --navy-mid: #FFFFFF;     /* Pure white for cards/panels */
+  --navy-light: #EDF0F5;   /* Light gray for headers */
+  --cream: #2C3E50;        /* Dark blue-gray for headings */
+  --text: #1A2B3C;         /* Nearly black for main text */
+  --text-dim: #5A6B7C;     /* Medium gray for secondary text */
+}
+
 body { font-family:'Source Sans 3',sans-serif; background:var(--navy); color:var(--text); min-height:100vh; overflow-x:hidden; }
 body::before { content:''; position:fixed; inset:0; background:radial-gradient(ellipse at 20% 20%,rgba(201,168,76,.08),transparent 60%),radial-gradient(ellipse at 80% 80%,rgba(139,26,26,.06),transparent 50%); pointer-events:none; z-index:0; }
 h1,h2,h3 { font-family:'Playfair Display',serif; }
